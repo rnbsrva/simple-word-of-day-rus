@@ -1,5 +1,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const dotenv = require('dotenv')
+const schedule = require("node-schedule");
+let job;
 dotenv.config()
 
 // Replace 'YOUR_TELEGRAM_BOT_TOKEN' with your actual bot token
@@ -94,6 +96,7 @@ bot.onText(/\/start/, (msg) => {
 // Handle new word request
 bot.onText(/\/newword/, (msg) => {
     const chatId = msg.chat.id;
+    console.log(msg.chat.id)
     const randomIndex = Math.floor(Math.random() * russianWords.length);
     const wordObj = russianWords[randomIndex];
     bot.sendMessage(chatId, `Слово: ${wordObj.word}\nЗначение: ${wordObj.explanation}`);
@@ -146,9 +149,21 @@ bot.on('message', (msg) => {
             }
         });
         state.testing = false;
+        job = schedule.scheduleJob('* * * * *', () => {
+
+            const words = getWordsByLevel(level);
+
+        if (words.length > 0) {
+            const randomIndex = Math.floor(Math.random() * words.length);
+            const wordObj = words[randomIndex];
+            bot.sendMessage(chatId, `Word of the day: ${wordObj.word}\nMeaning: ${wordObj.explanation}\nUsage in a sentence: ${wordObj.sentence}`);
+        } else {
+            bot.sendMessage(chatId, 'Sorry, could not find words for your level.');
+        }
+        });
+        console.log("scheduled")
         }
         userStates[chatId] = state;
-        scheduleDailyWord(chatId, level); 
     }
 });
 
@@ -159,6 +174,10 @@ bot.on('message', (msg) => {
     if (messageText === '🔍 New Word') {
         const level = userLevels[chatId];
         const words = getWordsByLevel(level);
+        console.log(chatId)
+        console.log(level)
+        console.log(words)
+        
         if (words.length > 0) {
             const randomIndex = Math.floor(Math.random() * words.length);
             const wordObj = words[randomIndex];
@@ -172,7 +191,9 @@ bot.on('message', (msg) => {
 
 function scheduleDailyWord(chatId, level) {
     schedule.scheduleJob({ hour: 0, minute: 0, second: 30 }, function() {
+        console.log("scheduler started")
         const words = getWordsByLevel(level);
+
         if (words.length > 0) {
             const randomIndex = Math.floor(Math.random() * words.length);
             const wordObj = words[randomIndex];
